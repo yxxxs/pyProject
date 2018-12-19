@@ -45,26 +45,30 @@ def onrack_workload():
         flag_high_low = int(str(sh.cell_value(rx, 20))[-1])
 
         if sh.cell_value(rx, 3) == '收货' and sh.cell_value(rx, 4) == '上架' and sh.cell_value(rx, 5) == '已完成':
-            if flag_fcl_part in ['CC-整箱-'] and flag_high_low > 2:
-                dict_count(name, row_fcl_high)
-                dict_add(name, pcs_fcl_high, pcs)
-            elif flag_fcl_part in ['CC-整箱-'] and flag_high_low <= 2:
-                dict_count(name, row_fcl_low)
-                dict_add(name, pcs_fcl_low, pcs)
-            elif flag_fcl_part in ['YW-2库-', 'CC-2库-'] and flag_high_low > 2:
-                dict_count(name, row_part_high)
-                dict_add(name, pcs_part_high, pcs)
-            elif flag_fcl_part in ['YW-2库-', 'CC-2库-'] and flag_high_low <= 2:
-                dict_count(name, row_part_low)
-                dict_add(name, pcs_part_low, pcs)
+            if flag_fcl_part in ['CC-整箱-']:
+                if flag_high_low > 2:
+                    dict_count(name, row_fcl_high)
+                    dict_add(name, pcs_fcl_high, pcs)
+                elif flag_high_low <= 2:
+                    dict_count(name, row_fcl_low)
+                    dict_add(name, pcs_fcl_low, pcs)
+                else:
+                    onrack_shit.append(name + '|' + 'row' + str(rx + 1) + '|上架，不能区分高低')
+            elif flag_fcl_part in ['YW-2库-', 'CC-2库-']:
+                if flag_high_low > 2:
+                    dict_count(name, row_part_high)
+                    dict_add(name, pcs_part_high, pcs)
+                elif flag_high_low <= 2:
+                    dict_count(name, row_part_low)
+                    dict_add(name, pcs_part_low, pcs)
+                else:
+                    onrack_shit.append(name + '|' + 'row' + str(rx + 1) + '|上架，不能区分高低')
             else:
-                onrack_shit.append(name + '|' + 'row' + str(rx + 1) + '|fcl_part_high_low')
+                onrack_shit.append(name + '|' + 'row' + str(rx + 1) + '|上架，不能区分整散')
         else:
-            onrack_shit.append(name + '|' + 'row' + str(rx + 1) + '|rack')
+            onrack_shit.append(name + '|' + 'row' + str(rx + 1) + '|上架，不能区分收货')
 
-    return {'row_fcl_high':row_fcl_high, 'row_fcl_low':row_fcl_low, 'row_part_high':row_part_high, 'row_part_low':row_part_low,
-             'pcs_fcl_high':pcs_fcl_high, 'pcs_fcl_low':pcs_fcl_low, 'pcs_part_high':pcs_part_high, 'pcs_part_low':pcs_part_low,
-             'onrack_shit':onrack_shit}
+    return row_fcl_high, row_fcl_low, row_part_high, row_part_low, pcs_fcl_high, pcs_fcl_low, pcs_part_high, pcs_part_low, onrack_shit
 # 解析拍灯表中的任务函数
 def lights_workload():
     car = {}
@@ -82,7 +86,7 @@ def lights_workload():
 
 
 # 读取源数据
-book = xlrd.open_workbook('d:\\workload_lights.xlsx')
+book = xlrd.open_workbook('d:\\workload_onrack.xlsx')
 sh = book.sheets()[0]
 # book_person = xlrd.open_workbook('d:\\person.xlsx')
 # sh_person = book_person.sheets()[0]
@@ -100,22 +104,7 @@ for cx in range(sh.ncols):
 
 # 解析任务
 if check_header(sh_header) == 'onrack':
-    workload = onrack_workload()
-
-    row_fcl_high = workload['row_fcl_high']
-    pcs_fcl_high = workload['pcs_fcl_high']
-
-    row_fcl_low = workload['row_fcl_low']
-    pcs_fcl_low = workload['pcs_fcl_low']
-
-    row_part_high = workload['row_part_high']
-    pcs_part_high = workload['pcs_part_high']
-
-    row_part_low = workload['row_part_low']
-    pcs_part_low = workload['pcs_part_low']
-
-    onrack_shit = workload['onrack_shit']
-
+    row_fcl_high, row_fcl_low, row_part_high, row_part_low, pcs_fcl_high, pcs_fcl_low, pcs_part_high, pcs_part_low, onrack_shit = onrack_workload()
     names = list(set(row_fcl_high.keys()).union(set(row_fcl_low.keys())).union(set(row_part_high.keys())).union(set(row_part_low.keys())))
 elif check_header(sh_header) == 'lights':
     workload = lights_workload()
@@ -171,6 +160,7 @@ elif check_header(sh_header) == 'lights':
         sheet1.write(names.index(name) + 1, 0, name)
         sheet1.write(names.index(name) + 1, 1, dict_val(name, workload))
 else:
+    print("no load")
 
 # 写入文件
 sheets.save('d:\\stat.xls')
